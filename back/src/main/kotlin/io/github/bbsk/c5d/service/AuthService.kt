@@ -120,7 +120,6 @@ class AuthService(
 
     private fun AppUser.toDto(): UserResponse {
         return UserResponse(
-            id = this.id,
             username = this.username,
             role = this.role,
             createdAt = this.createdAt

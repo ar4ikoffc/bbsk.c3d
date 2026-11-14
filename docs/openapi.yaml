@@ -1,0 +1,1520 @@
+openapi: 3.0.3
+info:
+  title: Умная диспетчеризация выездных бригад (BBSK API)
+  description: |
+    API сервиса оперативного планирования и управления выездными бригадами (Кейс №05 «Ростелеком»).
+    Решает задачу маршрутизации выездных сотрудников с временными окнами (VRPTW), квалификационными профилями, технологиями, багажником оборудования и динамическими событиями смены.
+  version: 1.0.0
+  contact:
+    name: Команда BBSK (C5D)
+
+servers:
+  - url: http://localhost:8080
+    description: Локальный сервер разработки / Docker Compose
+
+tags:
+  - name: "Служебные методы"
+    description: "Проверка работоспособности и готовности сервиса (health check)"
+  - name: "Аутентификация"
+    description: "Авторизация пользователей, выпуск и валидация JWT (HttpOnly cookie)"
+  - name: "Сотрудники и смены"
+    description: "Управление выездными сотрудниками, квалификацией, багажником и графиками смен (CRUD)"
+  - name: "Инфраструктура и здания"
+    description: "Управление зданиями (MKD/PRIVATE), узлами доступа связи (OLT, SWITCH) и сервисными центрами (СЦ)"
+  - name: "Типы работ"
+    description: "Справочник нормативных типов работ, контрольных сроков (SLA) и необходимых профилей"
+  - name: "Справочные данные"
+    description: "Пакетная инициализация справочников и единой матрицы времени в пути (benchmark)"
+
+paths:
+  /api/v1/health:
+    get:
+      tags: ["Служебные методы"]
+      summary: Проверка готовности сервиса
+      description: Возвращает статус готовности сервиса к приему данных.
+      responses:
+        '200':
+          description: Сервис готов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /api/v1/auth/register:
+    post:
+      tags: ["Аутентификация"]
+      summary: Регистрация нового пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Пользователь успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/auth/login:
+    post:
+      tags: ["Аутентификация"]
+      summary: Вход в систему (получение JWT в HttpOnly cookie)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Успешный вход (cookie access_token установлен)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/auth/logout:
+    post:
+      tags: ["Аутентификация"]
+      summary: Выход из системы (очистка JWT cookie)
+      responses:
+        '200':
+          description: Cookie успешно очищена
+
+  /api/v1/auth/me:
+    get:
+      tags: ["Аутентификация"]
+      summary: Получение данных текущего авторизованного пользователя
+      responses:
+        '200':
+          description: Данные профиля
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/staff:
+    get:
+      tags: ["Сотрудники и смены"]
+      summary: Получить список всех сотрудников
+      parameters:
+        - name: service_center_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Фильтр по UUID сервисного центра
+      responses:
+        '200':
+          description: Список сотрудников
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StaffResponse'
+    post:
+      tags: ["Сотрудники и смены"]
+      summary: Создать сотрудника
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateStaffRequest'
+      responses:
+        '201':
+          description: Сотрудник создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/staff/{id}:
+    get:
+      tags: ["Сотрудники и смены"]
+      summary: Получить сотрудника по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Сотрудник найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: ["Сотрудники и смены"]
+      summary: Обновить сотрудника по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStaffRequest'
+      responses:
+        '200':
+          description: Сотрудник обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: ["Сотрудники и смены"]
+      summary: Удалить сотрудника по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Сотрудник удален
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/staff/shifts:
+    get:
+      tags: ["Сотрудники и смены"]
+      summary: Список всех графиков смен
+      responses:
+        '200':
+          description: Список смен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ShiftResponse'
+    post:
+      tags: ["Сотрудники и смены"]
+      summary: Создать новый график смены
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShiftRequest'
+      responses:
+        '201':
+          description: Смена создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftResponse'
+
+  /api/v1/staff/shifts/{id}:
+    get:
+      tags: ["Сотрудники и смены"]
+      summary: Получить смену по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Смена найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShiftResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: ["Сотрудники и смены"]
+      summary: Удалить смену по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Смена удалена
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/buildings:
+    get:
+      tags: ["Инфраструктура и здания"]
+      summary: Получить список обслуживаемых зданий
+      parameters:
+        - name: building_type
+          in: query
+          schema:
+            $ref: '#/components/schemas/BuildingType'
+        - name: access_node_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: service_center_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список зданий
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BuildingResponse'
+    post:
+      tags: ["Инфраструктура и здания"]
+      summary: Создать новое здание
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBuildingRequest'
+      responses:
+        '201':
+          description: Здание создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildingResponse'
+
+  /api/v1/buildings/{id}:
+    get:
+      tags: ["Инфраструктура и здания"]
+      summary: Получить здание по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildingResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: ["Инфраструктура и здания"]
+      summary: Обновить здание по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBuildingRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BuildingResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: ["Инфраструктура и здания"]
+      summary: Удалить здание по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Здание удалено
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/buildings/access-nodes:
+    get:
+      tags: ["Инфраструктура и здания"]
+      summary: Список узлов доступа связи
+      parameters:
+        - name: technology
+          in: query
+          schema:
+            $ref: '#/components/schemas/Technology'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccessNodeResponse'
+    post:
+      tags: ["Инфраструктура и здания"]
+      summary: Создать узел доступа
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccessNodeRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessNodeResponse'
+
+  /api/v1/buildings/access-nodes/{id}:
+    get:
+      tags: ["Инфраструктура и здания"]
+      summary: Получить узел доступа по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessNodeResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: ["Инфраструктура и здания"]
+      summary: Обновить узел доступа по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAccessNodeRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessNodeResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: ["Инфраструктура и здания"]
+      summary: Удалить узел доступа по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Узел доступа удален
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/buildings/service-centers:
+    get:
+      tags: ["Инфраструктура и здания"]
+      summary: Список сервисных центров
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ServiceCenterResponse'
+    post:
+      tags: ["Инфраструктура и здания"]
+      summary: Создать сервисный центр
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateServiceCenterRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceCenterResponse'
+
+  /api/v1/buildings/service-centers/{id}:
+    get:
+      tags: ["Инфраструктура и здания"]
+      summary: Получить СЦ по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceCenterResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: ["Инфраструктура и здания"]
+      summary: Обновить СЦ по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateServiceCenterRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceCenterResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: ["Инфраструктура и здания"]
+      summary: Удалить СЦ по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: СЦ удален
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/v1/work-types:
+    get:
+      tags: ["Типы работ"]
+      summary: Список всех типов работ со сроками и профилями
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkTypeResponse'
+    post:
+      tags: ["Типы работ"]
+      summary: Создать тип работ
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkTypeRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkTypeResponse'
+
+  /api/v1/work-types/{id}:
+    get:
+      tags: ["Типы работ"]
+      summary: Получить тип работ по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkTypeResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: ["Типы работ"]
+      summary: Обновить тип работ по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWorkTypeRequest'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkTypeResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: ["Типы работ"]
+      summary: Удалить тип работ по ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Тип работ удален
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/reference:
+    put:
+      tags: ["Справочные данные"]
+      summary: Загрузить справочники (полная пакетная инициализация)
+      description: |
+        Полностью перезагружает справочные данные (СЦ, сотрудники, узлы с домами, типы работ).
+        Все загруженные ранее дни, планы и события удаляются.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferenceDataRequest'
+      responses:
+        '200':
+          description: Справочники успешно загружены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadResultResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '422':
+          $ref: '#/components/responses/Unprocessable'
+
+  /api/v1/reference/travel-matrix:
+    put:
+      tags: ["Справочные данные"]
+      summary: Загрузить единую матрицу времени в пути
+      description: Сохраняет матрицу времени в пути и расстояний между всеми точками (СЦ и дома).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TravelMatrixRequest'
+      responses:
+        '200':
+          description: Матрица успешно загружена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoadResultResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+components:
+  responses:
+    BadRequest:
+      description: Ошибка валидации входных данных
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Пользователь не авторизован
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Запрашиваемый ресурс не найден
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Конфликт уникальности или целостности данных
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unprocessable:
+      description: Некорректные семантические данные
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, team, version]
+      properties:
+        status:
+          type: string
+          example: ok
+        team:
+          type: string
+          example: BBSK
+        version:
+          type: string
+          example: 1.0.0
+
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+          example: NOT_FOUND
+        message:
+          type: string
+          example: Ресурс не найден
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+    RegisterRequest:
+      type: object
+      required: [username, password, email]
+      properties:
+        username:
+          type: string
+          example: dispatcher1
+        password:
+          type: string
+          example: SuperSecret123!
+        email:
+          type: string
+          format: email
+          example: dispatcher@rostelecom.ru
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: dispatcher1
+        password:
+          type: string
+          example: SuperSecret123!
+
+    UserResponse:
+      type: object
+      required: [username, email, role, created_at]
+      properties:
+        username:
+          type: string
+          example: dispatcher1
+        email:
+          type: string
+          example: dispatcher@rostelecom.ru
+        role:
+          type: string
+          example: DISPATCHER
+        created_at:
+          type: string
+          format: date-time
+
+    BuildingType:
+      type: string
+      enum: [MKD, PRIVATE]
+      description: '`MKD` — многоквартирный дом, `PRIVATE` — частный сектор'
+
+    AccessNodeType:
+      type: string
+      enum: [OLT, SWITCH, DSLAM, CMTS]
+      description: '`OLT` — PON, `SWITCH` — FTTB, `DSLAM` — xDSL, `CMTS` — DOCSIS'
+
+    Technology:
+      type: string
+      enum: [PON, FTTB, XDSL, DOCSIS]
+
+    Profile:
+      type: string
+      enum: [INSTALL, LTP3]
+
+    DeadlineKind:
+      type: string
+      enum: [SLOT, HOURS, WORKING_DAYS]
+
+    WorkTypeCode:
+      type: string
+      enum:
+        - INST_PON_MKD
+        - INST_FTTB_MKD
+        - INST_PRIVATE_VLS
+        - ADD_SERVICE
+        - SURVEY_PRIVATE
+        - REPAIR
+        - DEGRADATION
+        - DISMANTLE
+
+    OpeningHoursDto:
+      type: object
+      required: [open, close]
+      properties:
+        open:
+          type: string
+          example: "08:00:00"
+        close:
+          type: string
+          example: "21:00:00"
+
+    BreakWindowDto:
+      type: object
+      required: [from, to]
+      properties:
+        from:
+          type: string
+          example: "12:00:00"
+        to:
+          type: string
+          example: "15:00:00"
+
+    ShiftDto:
+      type: object
+      required: [start, end, break_window]
+      properties:
+        start:
+          type: string
+          example: "08:00:00"
+        end:
+          type: string
+          example: "20:00:00"
+        break_duration_min:
+          type: integer
+          example: 60
+        break_window:
+          $ref: '#/components/schemas/BreakWindowDto'
+
+    ShiftResponse:
+      type: object
+      required: [id, start_time, end_time, break_duration_min, break_window_from, break_window_to]
+      properties:
+        id:
+          type: string
+          format: uuid
+        start_time:
+          type: string
+          example: "08:00:00"
+        end_time:
+          type: string
+          example: "20:00:00"
+        break_duration_min:
+          type: integer
+          example: 60
+        break_window_from:
+          type: string
+          example: "12:00:00"
+        break_window_to:
+          type: string
+          example: "15:00:00"
+
+    CreateShiftRequest:
+      type: object
+      required: [start_time, end_time, break_window_from, break_window_to]
+      properties:
+        start_time:
+          type: string
+          example: "08:00:00"
+        end_time:
+          type: string
+          example: "20:00:00"
+        break_duration_min:
+          type: integer
+          example: 60
+        break_window_from:
+          type: string
+          example: "12:00:00"
+        break_window_to:
+          type: string
+          example: "15:00:00"
+
+    EquipmentDto:
+      type: object
+      properties:
+        ONT:
+          type: integer
+          default: 0
+          example: 4
+        ROUTER:
+          type: integer
+          default: 0
+          example: 2
+        STB:
+          type: integer
+          default: 0
+          example: 2
+
+    StaffResponse:
+      type: object
+      required: [id, staff_id, display_name, service_center_id, service_center_name, shift, profiles, technologies]
+      properties:
+        id:
+          type: string
+          format: uuid
+        staff_id:
+          type: string
+          example: TECH-01
+        display_name:
+          type: string
+          example: Иванов Иван
+        service_center_id:
+          type: string
+          format: uuid
+        service_center_name:
+          type: string
+          example: СЦ «Север»
+        shift:
+          $ref: '#/components/schemas/ShiftResponse'
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Profile'
+        technologies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Technology'
+        height_permit:
+          type: boolean
+          example: false
+        experience_years:
+          type: number
+          example: 3.5
+        equipment_start:
+          $ref: '#/components/schemas/EquipmentDto'
+        equipment_capacity:
+          $ref: '#/components/schemas/EquipmentDto'
+
+    CreateStaffRequest:
+      type: object
+      required: [staff_id, display_name, service_center_id, profiles, technologies]
+      properties:
+        staff_id:
+          type: string
+          example: TECH-01
+        display_name:
+          type: string
+          example: Иванов Иван
+        service_center_id:
+          type: string
+          format: uuid
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Profile'
+        technologies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Technology'
+        shift_id:
+          type: string
+          format: uuid
+        shift:
+          $ref: '#/components/schemas/ShiftDto'
+        equipment_start:
+          $ref: '#/components/schemas/EquipmentDto'
+        equipment_capacity:
+          $ref: '#/components/schemas/EquipmentDto'
+        height_permit:
+          type: boolean
+          default: false
+        experience_years:
+          type: number
+          default: 0.0
+
+    UpdateStaffRequest:
+      type: object
+      properties:
+        display_name:
+          type: string
+        service_center_id:
+          type: string
+          format: uuid
+        shift_id:
+          type: string
+          format: uuid
+        shift:
+          $ref: '#/components/schemas/ShiftDto'
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Profile'
+        technologies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Technology'
+        height_permit:
+          type: boolean
+        experience_years:
+          type: number
+        equipment_start:
+          $ref: '#/components/schemas/EquipmentDto'
+        equipment_capacity:
+          $ref: '#/components/schemas/EquipmentDto'
+
+    ServiceCenterResponse:
+      type: object
+      required: [id, service_center_id, name, address, lat, lon, opening_hours, restock_duration_min]
+      properties:
+        id:
+          type: string
+          format: uuid
+        service_center_id:
+          type: string
+          example: SC-01
+        name:
+          type: string
+          example: СЦ «Север»
+        address:
+          type: string
+          example: г. Екатеринбург, ул. Победы, 30
+        lat:
+          type: number
+          example: 56.8941
+        lon:
+          type: number
+          example: 60.6105
+        opening_hours:
+          $ref: '#/components/schemas/OpeningHoursDto'
+        restock_duration_min:
+          type: integer
+          example: 15
+
+    CreateServiceCenterRequest:
+      type: object
+      required: [service_center_id, name, address, lat, lon, opening_hours]
+      properties:
+        service_center_id:
+          type: string
+          example: SC-01
+        name:
+          type: string
+          example: СЦ «Север»
+        address:
+          type: string
+          example: г. Екатеринбург, ул. Победы, 30
+        lat:
+          type: number
+          example: 56.8941
+        lon:
+          type: number
+          example: 60.6105
+        opening_hours:
+          $ref: '#/components/schemas/OpeningHoursDto'
+        restock_duration_min:
+          type: integer
+          default: 15
+
+    UpdateServiceCenterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        lat:
+          type: number
+        lon:
+          type: number
+        opening_hours:
+          $ref: '#/components/schemas/OpeningHoursDto'
+        restock_duration_min:
+          type: integer
+
+    AccessNodeResponse:
+      type: object
+      required: [id, access_node_id, node_type, technology, name, address, lat, lon]
+      properties:
+        id:
+          type: string
+          format: uuid
+        access_node_id:
+          type: string
+          example: AN-0031
+        node_type:
+          $ref: '#/components/schemas/AccessNodeType'
+        technology:
+          $ref: '#/components/schemas/Technology'
+        name:
+          type: string
+          example: OLT Пионерский-2
+        address:
+          type: string
+          example: г. Екатеринбург, ул. Учителей, 22
+        lat:
+          type: number
+          example: 56.8698
+        lon:
+          type: number
+          example: 60.6510
+
+    CreateAccessNodeRequest:
+      type: object
+      required: [access_node_id, node_type, technology, name, address, lat, lon]
+      properties:
+        access_node_id:
+          type: string
+          example: AN-0031
+        node_type:
+          $ref: '#/components/schemas/AccessNodeType'
+        technology:
+          $ref: '#/components/schemas/Technology'
+        name:
+          type: string
+        address:
+          type: string
+        lat:
+          type: number
+        lon:
+          type: number
+
+    UpdateAccessNodeRequest:
+      type: object
+      properties:
+        access_node_id:
+          type: string
+        node_type:
+          $ref: '#/components/schemas/AccessNodeType'
+        technology:
+          $ref: '#/components/schemas/Technology'
+        name:
+          type: string
+        address:
+          type: string
+        lat:
+          type: number
+        lon:
+          type: number
+
+    BuildingResponse:
+      type: object
+      required: [id, building_id, access_node_id, address, lat, lon, building_type, overhead_line]
+      properties:
+        id:
+          type: string
+          format: uuid
+        building_id:
+          type: string
+          example: B-00412
+        access_node_id:
+          type: string
+          format: uuid
+        access_node_code:
+          type: string
+          example: AN-0031
+        zone_service_center_id:
+          type: string
+          format: uuid
+        zone_service_center_code:
+          type: string
+          example: SC-01
+        address:
+          type: string
+          example: г. Екатеринбург, ул. Учителей, 18
+        lat:
+          type: number
+          example: 56.8712
+        lon:
+          type: number
+          example: 60.6531
+        building_type:
+          $ref: '#/components/schemas/BuildingType'
+        overhead_line:
+          type: boolean
+          example: false
+
+    CreateBuildingRequest:
+      type: object
+      required: [building_id, access_node_id, address, lat, lon, building_type]
+      properties:
+        building_id:
+          type: string
+          example: B-00412
+        access_node_id:
+          type: string
+          format: uuid
+        zone_service_center_id:
+          type: string
+          format: uuid
+        address:
+          type: string
+          example: г. Екатеринбург, ул. Учителей, 18
+        lat:
+          type: number
+          example: 56.8712
+        lon:
+          type: number
+          example: 60.6531
+        building_type:
+          $ref: '#/components/schemas/BuildingType'
+        overhead_line:
+          type: boolean
+          default: false
+
+    UpdateBuildingRequest:
+      type: object
+      properties:
+        building_id:
+          type: string
+        access_node_id:
+          type: string
+          format: uuid
+        zone_service_center_id:
+          type: string
+          format: uuid
+        address:
+          type: string
+        lat:
+          type: number
+        lon:
+          type: number
+        building_type:
+          $ref: '#/components/schemas/BuildingType'
+        overhead_line:
+          type: boolean
+
+    WorkTypeResponse:
+      type: object
+      required: [id, code, name, duration_min, deadline_kind, pgp_relevant, profiles]
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          $ref: '#/components/schemas/WorkTypeCode'
+        name:
+          type: string
+          example: Инсталляция ШПД/IPTV, МКД, PON
+        duration_min:
+          type: integer
+          example: 90
+        max_start_delay_min:
+          type: integer
+          example: 10
+        deadline_kind:
+          $ref: '#/components/schemas/DeadlineKind'
+        deadline_value:
+          type: integer
+          example: 3
+        repeat_deadline_value:
+          type: integer
+          example: 12
+        pgp_relevant:
+          type: boolean
+          example: false
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Profile'
+
+    CreateWorkTypeRequest:
+      type: object
+      required: [code, name, duration_min, deadline_kind, profiles]
+      properties:
+        code:
+          $ref: '#/components/schemas/WorkTypeCode'
+        name:
+          type: string
+          example: Инсталляция ШПД/IPTV, МКД, PON
+        duration_min:
+          type: integer
+          example: 90
+        max_start_delay_min:
+          type: integer
+          example: 10
+        deadline_kind:
+          $ref: '#/components/schemas/DeadlineKind'
+        deadline_value:
+          type: integer
+          example: 3
+        repeat_deadline_value:
+          type: integer
+          example: 12
+        pgp_relevant:
+          type: boolean
+          default: false
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Profile'
+
+    UpdateWorkTypeRequest:
+      type: object
+      properties:
+        code:
+          $ref: '#/components/schemas/WorkTypeCode'
+        name:
+          type: string
+        duration_min:
+          type: integer
+        max_start_delay_min:
+          type: integer
+        deadline_kind:
+          $ref: '#/components/schemas/DeadlineKind'
+        deadline_value:
+          type: integer
+        repeat_deadline_value:
+          type: integer
+        pgp_relevant:
+          type: boolean
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Profile'
+
+    ReferenceBuildingDto:
+      type: object
+      required: [building_id, address, lat, lon, building_type]
+      properties:
+        building_id:
+          type: string
+          example: B-00412
+        address:
+          type: string
+          example: г. Екатеринбург, ул. Учителей, 18
+        lat:
+          type: number
+          example: 56.8712
+        lon:
+          type: number
+          example: 60.6531
+        building_type:
+          $ref: '#/components/schemas/BuildingType'
+        overhead_line:
+          type: boolean
+          default: false
+        zone_service_center_id:
+          type: string
+          example: SC-01
+
+    ReferenceAccessNodeDto:
+      type: object
+      required: [access_node_id, node_type, technology, name, address, lat, lon]
+      properties:
+        access_node_id:
+          type: string
+          example: AN-0031
+        node_type:
+          $ref: '#/components/schemas/AccessNodeType'
+        technology:
+          $ref: '#/components/schemas/Technology'
+        name:
+          type: string
+          example: OLT Пионерский-2
+        address:
+          type: string
+          example: г. Екатеринбург, ул. Учителей, 22
+        lat:
+          type: number
+          example: 56.8698
+        lon:
+          type: number
+          example: 60.6510
+        buildings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferenceBuildingDto'
+
+    ReferenceStaffDto:
+      type: object
+      required: [staff_id, name, service_center_id, shift, profiles, technologies]
+      properties:
+        staff_id:
+          type: string
+          example: TECH-01
+        name:
+          type: string
+          example: Иванов Иван
+        service_center_id:
+          type: string
+          example: SC-01
+        shift:
+          $ref: '#/components/schemas/ShiftDto'
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Profile'
+        technologies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Technology'
+        equipment_start:
+          $ref: '#/components/schemas/EquipmentDto'
+        equipment_capacity:
+          $ref: '#/components/schemas/EquipmentDto'
+        height_permit:
+          type: boolean
+          default: false
+        experience_years:
+          type: number
+          default: 0.0
+
+    ReferenceDataRequest:
+      type: object
+      required: [service_centers, staff, access_nodes, work_types]
+      properties:
+        service_centers:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateServiceCenterRequest'
+        staff:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferenceStaffDto'
+        access_nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReferenceAccessNodeDto'
+        work_types:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreateWorkTypeRequest'
+
+    TravelMatrixRequest:
+      type: object
+      required: [matrix_id, points, durations_sec, distances_m]
+      properties:
+        matrix_id:
+          type: string
+          example: ekb-2026-10-v1
+        points:
+          type: array
+          items:
+            type: string
+          example: ["SC-01", "SC-02", "B-00001", "B-00002"]
+        durations_sec:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+        distances_m:
+          type: array
+          items:
+            type: array
+            items:
+              type: integer
+        hourly_factors:
+          type: array
+          items:
+            type: object
+            required: [hour, factor]
+            properties:
+              hour:
+                type: integer
+                example: 8
+              factor:
+                type: number
+                example: 1.35
+
+    LoadResultResponse:
+      type: object
+      required: [status, counts]
+      properties:
+        status:
+          type: string
+          example: loaded
+        counts:
+          type: object
+          additionalProperties:
+            type: integer
+          example:
+            service_centers: 5
+            staff: 40
+            access_nodes: 142
+            buildings: 1260
+            work_types: 8

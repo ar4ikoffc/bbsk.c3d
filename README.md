@@ -163,12 +163,18 @@ docker compose down -v
   }
   ```
 
-### 2. Интерактивная документация API (Swagger UI)
+### 2. Интерактивная документация API (Swagger UI / Offline)
 
-Интерфейс Swagger UI для тестирования и просмотра спецификации эндпоинтов доступен по следующим адресам:
-
+#### При запущенном приложении:
 - **Swagger UI:** `http://localhost:8080/swagger-ui.html` (или `http://localhost:8080/swagger-ui/index.html`)
 - **Спецификация OpenAPI (JSON):** `http://localhost:8080/v3/api-docs`
+- **Спецификация OpenAPI (YAML):** `http://localhost:8080/v3/api-docs.yaml`
+
+#### Автономный просмотр (без запуска проекта и без Docker):
+Если нет возможности запустить проект, в репозиторий включена автономная документация:
+1. **Интерактивный просмотрщик:** откройте файл **[docs/index.html](docs/index.html)** двойным кликом в любом браузере (на базе Redoc). Он загрузит документацию со всеми схемами, моделями и описаниями без необходимости запускать бэкенд.
+2. **Файл спецификации OpenAPI:** **[docs/openapi.yaml](docs/openapi.yaml)** можно импортировать в [Swagger Editor](https://editor.swagger.io), Postman или Insomnia.
+3. **Markdown-версия:** **[docs/API.md](docs/API.md)** доступна для чтения непосредственно на GitHub/GitLab.
 
 ### 3. Эндпоинты аутентификации
 
