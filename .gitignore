@@ -1,1 +1,4 @@
-bbsk.c5d\map-module\.venv
+.venv
+cache
+__pycache__
+matrix_output.json
