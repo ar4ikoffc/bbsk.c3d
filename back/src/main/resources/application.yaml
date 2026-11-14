@@ -1,0 +1,31 @@
+spring:
+  application:
+    name: c5d
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_SERVER:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:rostelecom}?currentSchema=${POSTGRES_SCHEMA:app}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:admin}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        default_schema: ${POSTGRES_SCHEMA:app}
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    create-schemas: true
+    schemas: ${POSTGRES_SCHEMA:app}
+    default-schema: ${POSTGRES_SCHEMA:app}
+
+server:
+  port: ${SERVER_PORT:8080}
+  tomcat:
+    max-swallow-size: 100MB
+    max-http-form-post-size: 100MB
