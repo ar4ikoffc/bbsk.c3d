@@ -1,6 +1,7 @@
 package io.github.bbsk.c5d.model.plan.entity
 
 import io.github.bbsk.c5d.model.day.entity.WorkDay
+import io.github.bbsk.c5d.model.plan.enums.RouteStatus
 import io.github.bbsk.c5d.model.reference.entity.ServiceCenter
 import io.github.bbsk.c5d.model.reference.entity.Staff
 import jakarta.persistence.*
@@ -29,8 +30,9 @@ class Route(
     @JoinColumn(name = "service_center_id", nullable = false)
     var serviceCenter: ServiceCenter,
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 16)
-    var status: String = "ACTIVE",
+    var status: RouteStatus = RouteStatus.ACTIVE,
 
     @Column(name = "unavailable_from")
     var unavailableFrom: OffsetDateTime? = null,

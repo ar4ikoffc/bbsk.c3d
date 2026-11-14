@@ -1,6 +1,8 @@
 package io.github.bbsk.c5d.model.plan.entity
 
 import io.github.bbsk.c5d.model.day.entity.WorkOrder
+import io.github.bbsk.c5d.model.plan.enums.StopStatus
+import io.github.bbsk.c5d.model.plan.enums.StopType
 import jakarta.persistence.*
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -19,8 +21,9 @@ class RouteStop(
     @Column(name = "seq", nullable = false)
     var seq: Int,
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 16)
-    var type: String,
+    var type: StopType,
 
     @Column(name = "location_code", nullable = false, length = 32)
     var locationCode: String,
@@ -44,8 +47,9 @@ class RouteStop(
     @Column(name = "distance_m", nullable = false)
     var distanceM: Int = 0,
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 16)
-    var status: String = "PLANNED",
+    var status: StopStatus = StopStatus.PLANNED,
 
     @Column(name = "equipment_after_ont")
     var equipmentAfterOnt: Int? = null,

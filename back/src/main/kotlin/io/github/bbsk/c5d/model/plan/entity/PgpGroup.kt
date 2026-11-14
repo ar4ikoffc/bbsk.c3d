@@ -2,6 +2,7 @@ package io.github.bbsk.c5d.model.plan.entity
 
 import io.github.bbsk.c5d.model.day.entity.WorkDay
 import io.github.bbsk.c5d.model.day.entity.WorkOrder
+import io.github.bbsk.c5d.model.plan.enums.PgpAction
 import io.github.bbsk.c5d.model.reference.entity.AccessNode
 import jakarta.persistence.*
 import java.time.OffsetDateTime
@@ -28,8 +29,9 @@ class PgpGroup(
     @Column(name = "detected_at", nullable = false)
     var detectedAt: OffsetDateTime,
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "action", nullable = false, length = 32)
-    var action: String = "TRANSFER_TO_STATION",
+    var action: PgpAction = PgpAction.TRANSFER_TO_STATION,
 
     @Column(name = "comment", columnDefinition = "TEXT")
     var comment: String? = null,

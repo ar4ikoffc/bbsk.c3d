@@ -1,5 +1,7 @@
 package io.github.bbsk.c5d.model.reference.entity
 
+import io.github.bbsk.c5d.model.reference.enums.Profile
+import io.github.bbsk.c5d.model.reference.enums.Technology
 import jakarta.persistence.*
 import java.util.UUID
 
@@ -50,11 +52,13 @@ class Staff(
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "staff_profile", joinColumns = [JoinColumn(name = "staff_id")])
+    @Enumerated(EnumType.STRING)
     @Column(name = "profile", nullable = false, length = 32)
-    var profiles: MutableSet<String> = mutableSetOf(),
+    var profiles: MutableSet<Profile> = mutableSetOf(),
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "staff_technology", joinColumns = [JoinColumn(name = "staff_id")])
+    @Enumerated(EnumType.STRING)
     @Column(name = "technology", nullable = false, length = 16)
-    var technologies: MutableSet<String> = mutableSetOf()
+    var technologies: MutableSet<Technology> = mutableSetOf()
 )

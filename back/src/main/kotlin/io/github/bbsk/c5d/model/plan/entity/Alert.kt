@@ -2,6 +2,9 @@ package io.github.bbsk.c5d.model.plan.entity
 
 import io.github.bbsk.c5d.model.day.entity.WorkDay
 import io.github.bbsk.c5d.model.day.entity.WorkOrder
+import io.github.bbsk.c5d.model.plan.enums.AlertStatus
+import io.github.bbsk.c5d.model.plan.enums.AlertSuggestedAction
+import io.github.bbsk.c5d.model.plan.enums.AlertType
 import io.github.bbsk.c5d.model.reference.entity.Staff
 import jakarta.persistence.*
 import java.time.OffsetDateTime
@@ -24,11 +27,13 @@ class Alert(
     @Column(name = "created_at", nullable = false)
     var createdAt: OffsetDateTime,
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 32)
-    var type: String,
+    var type: AlertType,
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 16)
-    var status: String = "ACTIVE",
+    var status: AlertStatus = AlertStatus.ACTIVE,
 
     @Column(name = "resolved_at")
     var resolvedAt: OffsetDateTime? = null,
@@ -41,8 +46,9 @@ class Alert(
     @JoinColumn(name = "staff_id")
     var staff: Staff? = null,
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "suggested_action", length = 32)
-    var suggestedAction: String? = null,
+    var suggestedAction: AlertSuggestedAction? = null,
 
     @Column(name = "message", nullable = false, columnDefinition = "TEXT")
     var message: String,

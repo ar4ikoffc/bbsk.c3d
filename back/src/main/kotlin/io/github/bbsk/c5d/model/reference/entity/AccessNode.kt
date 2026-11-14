@@ -1,5 +1,7 @@
 package io.github.bbsk.c5d.model.reference.entity
 
+import io.github.bbsk.c5d.model.reference.enums.AccessNodeType
+import io.github.bbsk.c5d.model.reference.enums.Technology
 import jakarta.persistence.*
 import java.util.UUID
 
@@ -13,11 +15,13 @@ class AccessNode(
     @Column(name = "code", nullable = false, unique = true, length = 16)
     var code: String,
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "node_type", nullable = false, length = 16)
-    var nodeType: String,
+    var nodeType: AccessNodeType,
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "technology", nullable = false, length = 16)
-    var technology: String,
+    var technology: Technology,
 
     @Column(name = "name", nullable = false, length = 128)
     var name: String,

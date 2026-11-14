@@ -1,5 +1,6 @@
 package io.github.bbsk.c5d.model.reference.entity
 
+import io.github.bbsk.c5d.model.reference.enums.BuildingType
 import jakarta.persistence.*
 import java.util.UUID
 
@@ -30,8 +31,9 @@ class Building(
     @Column(name = "lon", nullable = false)
     var lon: Double,
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "building_type", nullable = false, length = 16)
-    var buildingType: String,
+    var buildingType: BuildingType,
 
     @Column(name = "overhead_line", nullable = false)
     var overheadLine: Boolean = false

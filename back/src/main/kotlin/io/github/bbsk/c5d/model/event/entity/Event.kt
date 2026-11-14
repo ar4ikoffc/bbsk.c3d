@@ -1,6 +1,7 @@
 package io.github.bbsk.c5d.model.event.entity
 
 import io.github.bbsk.c5d.model.day.entity.WorkDay
+import io.github.bbsk.c5d.model.event.enums.EventType
 import jakarta.persistence.*
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -19,8 +20,9 @@ class Event(
     @Column(name = "code", nullable = false, length = 64)
     var code: String,
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false, length = 32)
-    var type: String,
+    var type: EventType,
 
     @Column(name = "timestamp", nullable = false)
     var timestamp: OffsetDateTime,

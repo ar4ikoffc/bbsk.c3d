@@ -1,5 +1,6 @@
 package io.github.bbsk.c5d.model.day.entity
 
+import io.github.bbsk.c5d.model.day.enums.OrderStatus
 import io.github.bbsk.c5d.model.reference.entity.AccessNode
 import io.github.bbsk.c5d.model.reference.entity.Building
 import io.github.bbsk.c5d.model.reference.entity.ServiceCenter
@@ -68,6 +69,7 @@ class WorkOrder(
     @Column(name = "previous_order_id", length = 32)
     var previousOrderId: String? = null,
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
-    var status: String = "PENDING"
+    var status: OrderStatus = OrderStatus.PENDING
 )
