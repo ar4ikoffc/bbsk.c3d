@@ -82,3 +82,6 @@ scratch/
 Thumbs.db
 Desktop.ini
 ehthumbs.db
+
+cache
+**.pbf

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yekaterinburg OSM Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map { height: 100vh; width: 100%; }
+        .panel { position: fixed; top: 20px; left: 20px; width: 240px; 
+                 background: #f8f9fa; padding: 15px; border-radius: 8; 
+                 box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 900; 
+                 font-family: Arial; display: none; }
+        .panel.active { display: block; }
+        .panel h3 { margin: 0 0 10px 0; color: #333; font-size: 12px; }
+        .form { margin: 5px 0; }
+        .form label { display: block; font-size: 11px; color: #555; margin-bottom: 3px; }
+        .form input { width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 4; font-size: 12; box-sizing: border-box; }
+        .form input:focus { border-color: #80bdff; outline: none; }
+        .btn { padding: 5px 10px; border: none; border-radius: 4; cursor: pointer; font-size: 11; }
+        .btn-save { background: #28a745; color: white; width: 100%; }
+        .btn-cancel { background: #6c757d; color: white; width: 100%; margin-top: 5px; }
+        .list { margin-top: 10px; max-height: 140px; overflow-y: auto; font-size: 11; }
+        .list div { padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
+        .list span { color: #555; cursor: pointer; }
+        .list .del { color: #dc3545; margin-left: 5px; }
+        .leaflet-control { left: 20px !important; }
+        #tog { position: fixed; top: 20px; right: 20px; background: #343a40; color: white; 
+               padding: 5px 8px; border-radius: 5; cursor: pointer; z-index: 900; font-size: 12; }
+    </style>
+</head>
+<body>
+    <div id="tog">≡</div>
+    <div class="panel" id="panel">
+        <h3>Точки</h3>
+        <div class="form" id="form" style="display:none;">
+            <input type="text" id="pid" placeholder="ID" readonly>
+            <input type="text" id="pname" placeholder="Название">
+            <input type="number" id="plat" placeholder="Широта" step="any">
+            <input type="number" id="plng" placeholder="Долгота" step="any">
+            <div style="display:block;margin:5px 0;"><button class="btn btn-save">Сохранить точку</button><button class="btn btn-cancel">Отмена</button></div>
+        </div>
+        <div class="list" id="list"></div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Ваш инициализирующий код карты
+        const map = L.map('map').setView([56.8387, 60.6087], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        map._container.style.touchAction = 'pan-y';
+        map.dragging.enabled = false;
+        map.touchZoom.enable(); map.boxZoom.enable(); map.keyboard.enable();
+
+        let markers = {};
+
+        // **Самое простое: клик по карте добавляет точку**
+        map.on('click', async e => {
+            const id = 'pt_'+Date.now(); 
+            await fetch('/map/points', {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({id,name:'Точка', lat:e.latlng.lat.toFixed(6), lng:e.latlng.lng.toFixed(6)})
+            }); load();
+        });
+
+        // Load points
+        async function load() {
+            const r = await fetch('/map/points'); const p = await r.json();
+            const list = document.getElementById('list'); list.innerHTML = '';
+            for (const [id, pt] of Object.entries(p)) {
+                addMark(pt, id); const d = document.createElement('div'); d.style.cssText = 'padding:3px 0;border-bottom:1px solid #eee;';
+                const b = document.createElement('button'); b.style.cssText='background:none;border:none;color:#dc3545;cursor:pointer;margin-left:5px;font-size:11px;'; b.innerHTML='×'; b.onclick=(e)=>{e.stopPropagation();if(confirm('Удалить '+id+'?'))fetch(`/map/points/${id}`,{method:'DELETE'}).then(()=>load())}; d.innerHTML='<span style="color:#555;">'+(pt.name||id)+'</span>'; d.appendChild(b); list.appendChild(d);
+            }
+        }
+
+        function addMark(p, id) {
+            const m = L.marker([p.lat, p.lng]).addTo(map).bindPopup('<b>'+(p.name||id)+'</b>'); m.options.id=id; markers[id]=m;
+        }
+
+        // Toolbar toggle
+        document.getElementById('tog').onclick = () => document.getElementById('panel').classList.toggle('active');
+
+        // Form save
+        document.getElementById('form').onclick = e => {
+            if(e.target.className=='btn-save') {
+                const id=document.getElementById('pid').value||'pt_'+Date.now(); const name=document.getElementById('pname').value||'Точка';
+                const lat=parseFloat(document.getElementById('plat').value); const lng=parseFloat(document.getElementById('plng').value);
+                if(isNaN(lat)||isNaN(lng)){alert('Введите координаты');return;}
+                fetch('/map/points',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,name,lat,lng})}).then(()=>load());
+            }
+            if(e.target.className=='btn-cancel') document.getElementById('panel').style.display='none';
+        };
+
+        // Init
+        load();
+    </script>
+</body>
+</html>
