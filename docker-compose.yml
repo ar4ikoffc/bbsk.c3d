@@ -1,52 +1,49 @@
-services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: bbsk-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-rostelecom}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-rostelecom}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    networks:
-      - bbsk-network
+# Docker Compose for OSRM + FastAPI Application
 
-  backend:
-    build:
-      context: ./back
-      dockerfile: Dockerfile
-    container_name: bbsk-backend
+version: '3.8'
+
+services:
+  # OSRM Car Router - provides routing services
+  osrm:
+    image: jostmey/osrm-car:latest
+    container_name: osrm_router
+    restart: unless-stopped
+    volumes:
+      - ./map-module:/data:ro
+    environment:
+      - OSM2IMGR_ARGS=-p car
+    command: >
+      /osrm-routed /data/ekb_graph.graphml
+    ports:
+      - "5000:5000"
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # FastAPI Application
+  app:
+    build: ./map-module
+    container_name: fastapi_app
     restart: unless-stopped
     depends_on:
-      postgres:
+      osrm:
         condition: service_healthy
     environment:
-      POSTGRES_SERVER: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: ${POSTGRES_DB:-rostelecom}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_SCHEMA: ${POSTGRES_SCHEMA:-app}
-      SERVER_PORT: ${SERVER_PORT:-8080}
-      SECRET_KEY: ${SECRET_KEY:-}
+      - USE_OSRM=true
+      - OSRM_BASE_URL=http://osrm:5000
     ports:
-      - "${SERVER_PORT:-8080}:8080"
-    networks:
-      - bbsk-network
+      - "8000:8000"
+    # Working directory
+    working_dir: /app
 
-volumes:
-  postgres_data:
-    driver: local
-
-networks:
-  bbsk-network:
-    driver: bridge
+# Optional: PostgreSQL database for production
+# services:
+#   db:
+#     image: postgres:13
+#     environment:
+#       POSTGRES_DB: rostelecom
+#       POSTGRES_USER: app_user
+#       POSTGRES_PASSWORD: password

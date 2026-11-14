@@ -100,6 +100,15 @@ points_db = {}
 shortest_path_cache = {}
 
 
+import os
+from urllib.request import urlopen
+from urllib.error import URLError, HTTPError
+
+# OSRM Configuration
+OSRM_BASE_URL = os.getenv("OSRM_BASE_URL", "http://localhost:5000")
+USE_OSRM = os.getenv("USE_OSRM", "false").lower() == "true"
+
+
 def haversine_dist_m(lat1, lng1, lat2, lng2) -> float:
     """Calculate approximate distance in meters between two coordinates."""
     import math
@@ -114,10 +123,24 @@ def haversine_dist_m(lat1, lng1, lat2, lng2) -> float:
 
 
 def get_path_length_m(start_lat: float, start_lng: float, end_lat: float, end_lng: float) -> float:
-    """Get shortest path length in meters using haversine fallback."""
+    """Get shortest path length in meters using OSRM if available, else haversine fallback."""
     cache_key = f"{start_lat}_{start_lng}_{end_lat}_{end_lng}"
     if cache_key in shortest_path_cache:
         return shortest_path_cache[cache_key]
+
+    if USE_OSRM:
+        try:
+            url = f"{OSRM_BASE_URL}/route/v1/driving/{start_lng},{start_lat};{end_lng},{end_lat}"
+            params = {"overview": "false", "steps": "false"}
+            full_url = url + "?" + "&".join([f"{k}={v}" for k, v in params.items()])
+            with urlopen(full_url, timeout=5.0) as response:
+                data = __import__('json').load(response)
+            if data.get("code") == "Ok" and data.get("waypoints"):
+                distance = data["routes"][0]["distance"]  # in meters
+                shortest_path_cache[cache_key] = distance
+                return distance
+        except (URLError, HTTPError, Exception):
+            pass  # Fall through to haversine
 
     import math
     R = 6371000
