@@ -8,17 +8,9 @@ import os
 import math
 from enum import Enum
 
-# Optional OSM imports - only available if osmnx is installed
-try:
-    import osmnx as ox
-    import networkx as nx
-
-    # Build OSM graph for Yekaterinburg at startup
-    G = ox.graph_from_place('Yekaterinburg, Russia', network_type='drive')
-    G_projected = ox.project_graph(G)
-    HAS_OSMNX = True
-except ImportError:
-    HAS_OSMNX = False
+# Optional OSM imports - graph disabled at startup due to API capacity issues
+# Use haversine fallback for distance calculations
+HAS_OSMNX = False
 
 # TYPE CHECKING ONLY - not executed at runtime
 if TYPE_CHECKING:
