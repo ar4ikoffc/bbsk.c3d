@@ -28,6 +28,10 @@ class JwtAuthenticationFilter(
             if (username != null && jwtService.isTokenValid(token, username)) {
                 val claims = jwtService.extractAllClaims(token)
                 val role = claims?.get("role")?.toString() ?: "DISPATCHER"
+                val userId = claims?.get("userId")?.toString()
+                if (userId != null) {
+                    request.setAttribute("userId", userId)
+                }
                 val authorities = listOf(SimpleGrantedAuthority("ROLE_$role"))
 
                 val authToken = UsernamePasswordAuthenticationToken(
