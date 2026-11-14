@@ -1,0 +1,10 @@
+.git
+.gitignore
+.dockerignore
+.gradle/
+.kotlin/
+bin/
+build/
+*.log
+.vscode/
+.idea/
